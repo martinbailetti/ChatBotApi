@@ -1,0 +1,11 @@
+-- ============================================================
+-- Seed de ejemplo — Usuarios de prueba
+-- SOLO para entornos de desarrollo. No ejecutar en producción.
+-- ============================================================
+-- Contraseñas generadas con: password_hash('secret123', PASSWORD_DEFAULT)
+-- Las contraseñas de este fichero son ficticias y de ejemplo.
+-- En producción usa el endpoint POST /api/auth/login o el script de seeding.
+
+-- Ejemplo de inserción manual (el hash debe generarse desde PHP):
+-- INSERT INTO `users` (`email`, `first_name`, `last_name`, `password`) VALUES
+-- ('admin@example.com', 'Admin', 'Demo', '$2y$10$...');

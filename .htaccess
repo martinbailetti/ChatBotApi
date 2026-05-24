@@ -1,0 +1,11 @@
+Options -Indexes
+RewriteEngine On
+
+# Pasar la cabecera Authorization a PHP-CGI / FastCGI
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Redirigir todo a index.php excepto archivos/directorios existentes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
