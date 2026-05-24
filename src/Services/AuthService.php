@@ -65,6 +65,7 @@ class AuthService
             'email'      => $user['email'],
             'first_name' => $user['first_name'],
             'last_name'  => $user['last_name'],
+            'type'       => isset($user['type']) ? $user['type'] : 'DEFAULT',
             'iat'        => $now,
             'exp'        => $exp,
         ]));

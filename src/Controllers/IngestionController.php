@@ -44,7 +44,7 @@ class IngestionController extends BaseController
         $ch  = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode([]),
+            CURLOPT_POSTFIELDS     => '{}',
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 120,
@@ -63,7 +63,10 @@ class IngestionController extends BaseController
 
         $data = json_decode((string)$result, true);
         if ($httpCode >= 400) {
-            $this->jsonError($data['detail'] ?? 'Error en la ingesta.', 502);
+            $detail = isset($data['detail'])
+                ? (is_string($data['detail']) ? $data['detail'] : json_encode($data['detail'], JSON_UNESCAPED_UNICODE))
+                : 'Error en la ingesta.';
+            $this->jsonError($detail, 502);
             return;
         }
         $this->jsonSuccess($data, 'Sincronización iniciada.');
