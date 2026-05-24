@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * FaqController — gestiona las FAQs almacenadas en un archivo Markdown.
  *
- * Formato del archivo (SMIDOCS_FAQS_FILE):
+ * Formato del archivo (DOCS_FAQS_FILE):
  *   # Título
  *
  *   Descripción opcional
@@ -23,7 +23,7 @@ class FaqController extends BaseController
 {
     private function filePath()
     {
-        $path = Config::get('SMIDOCS_FAQS_FILE', '');
+        $path = Config::get('DOCS_FAQS_FILE', '');
         return $path !== '' ? $path : null;
     }
 
@@ -79,7 +79,7 @@ class FaqController extends BaseController
     {
         $this->requireAuth();
         $filePath = $this->filePath();
-        if (!$filePath) { $this->jsonError('SMIDOCS_FAQS_FILE no está configurado.', 500); return; }
+        if (!$filePath) { $this->jsonError('DOCS_FAQS_FILE no está configurado.', 500); return; }
 
         if (!file_exists($filePath)) {
             $this->jsonSuccess(array('title' => '', 'description' => '', 'faqs' => array()));
@@ -102,7 +102,7 @@ class FaqController extends BaseController
         if (($payload['type'] ?? '') !== 'ADMIN') { $this->jsonError('Acceso denegado.', 403); return; }
 
         $filePath = $this->filePath();
-        if (!$filePath) { $this->jsonError('SMIDOCS_FAQS_FILE no está configurado.', 500); return; }
+        if (!$filePath) { $this->jsonError('DOCS_FAQS_FILE no está configurado.', 500); return; }
 
         $body        = $this->getJsonBody();
         $title       = trim((string)($body['title'] ?? ''));

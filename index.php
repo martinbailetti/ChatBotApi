@@ -50,8 +50,8 @@ $router->post('/api/users', ['UserController', 'create']);
 $router->put('/api/auth/profile',  ['AuthController', 'updateProfile']);
 $router->put('/api/auth/password', ['AuthController', 'changePassword']);
 
-// Chat / smirag proxy (protegido)
-$router->post('/api/chat/query', ['SmiDocsController', 'query']);
+// Chat / rag proxy (protegido)
+$router->post('/api/chat/query', ['DocsController', 'query']);
 
 // Conversaciones (protegidas)
 $router->get('/api/chat/conversations',                       ['ConversationController', 'index']);
@@ -63,6 +63,7 @@ $router->delete('/api/chat/conversations/{id}',               ['ConversationCont
 // Documentos — proxy a ChatIA (protegidas)
 $router->get('/api/documents',        ['DocumentsController', 'index']);
 $router->get('/api/documents/detail', ['DocumentsController', 'detail']);
+$router->get('/api/documents/file',   ['DocumentsController', 'download']);
 $router->delete('/api/documents',     ['DocumentsController', 'destroy']);
 
 // Ingesta — proxy a ChatIA (protegidas)

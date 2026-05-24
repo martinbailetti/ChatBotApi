@@ -5,7 +5,7 @@ class IngestionController extends BaseController
 {
     private function baseUrl(): string
     {
-        return rtrim(Config::get('SMIDOCS_BASE_URL', 'http://localhost:8888'), '/');
+        return rtrim(Config::get('DOCS_BASE_URL', 'http://localhost:8888'), '/');
     }
 
     // GET /api/ingestion/status

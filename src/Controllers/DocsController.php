@@ -2,21 +2,21 @@
 declare(strict_types=1);
 
 /**
- * Controlador proxy hacia el servidor smirag (ChatIA).
+ * Controlador proxy hacia el servidor rag (ChatIA).
  *
  * Rutas (todas protegidas — requieren Bearer token):
- *   POST /api/chat/query  — Envía una pregunta al servidor smirag y devuelve la respuesta.
+ *   POST /api/chat/query  — Envía una pregunta al servidor rag y devuelve la respuesta.
  *
  * Variables de entorno necesarias:
- *   SMIDOCS_CHAT_URL      — URL completa del endpoint /consulta de smirag
- *   SMIDOCS_CHAT_TIMEOUT  — Timeout en segundos (default 30)
+ *   DOCS_CHAT_URL      — URL completa del endpoint /consulta de rag
+ *   DOCS_CHAT_TIMEOUT  — Timeout en segundos (default 30)
  */
-class SmiDocsController extends BaseController
+class DocsController extends BaseController
 {
     // ── POST /api/chat/query ──────────────────────────────────────────────────
 
     /**
-     * Recibe { pregunta, conversation_id?, conversation? } y las reenvía a smirag.
+     * Recibe { pregunta, conversation_id?, conversation? } y las reenvía a rag.
      * Persiste la conversación y los mensajes en BD. Devuelve la respuesta normalizada.
      *
      * @param array $params
@@ -34,8 +34,8 @@ class SmiDocsController extends BaseController
             return;
         }
 
-        $chatUrl = Config::get('SMIDOCS_CHAT_URL', '');
-        $timeout = max(5, (int)Config::get('SMIDOCS_CHAT_TIMEOUT', '30'));
+        $chatUrl = Config::get('DOCS_CHAT_URL', '');
+        $timeout = max(5, (int)Config::get('DOCS_CHAT_TIMEOUT', '30'));
 
         if ($chatUrl === '') {
             $this->jsonError('El servicio de chat no está configurado en el servidor.', 503);
@@ -63,7 +63,7 @@ class SmiDocsController extends BaseController
         // Guardar mensaje del usuario
         $msgModel->save($conversationId, $userId, 'user', $pregunta);
 
-        // ── Construir payload para smirag ─────────────────────────────────────
+        // ── Construir payload para rag ─────────────────────────────────────
         $payload = ['pregunta' => $pregunta];
 
         // Historial conversacional opcional: array de {role, content}
@@ -72,7 +72,7 @@ class SmiDocsController extends BaseController
             $payload['conversation'] = $conversation;
         }
 
-        // ── Llamada HTTP a smirag ─────────────────────────────────────────────
+        // ── Llamada HTTP a rag ─────────────────────────────────────────────
         $ch = curl_init($chatUrl);
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
@@ -92,14 +92,14 @@ class SmiDocsController extends BaseController
         curl_close($ch);
 
         if ($result === false || $curlError !== '') {
-            error_log('[SmiDocsController] cURL error: ' . $curlError);
+            error_log('[DocsController] cURL error: ' . $curlError);
             $this->jsonError('No se pudo conectar con el servicio de chat.', 503);
             return;
         }
 
         $data = json_decode($result, true);
         if (!is_array($data)) {
-            error_log('[SmiDocsController] Respuesta no JSON (HTTP ' . $httpCode . '): ' . substr((string)$result, 0, 200));
+            error_log('[DocsController] Respuesta no JSON (HTTP ' . $httpCode . '): ' . substr((string)$result, 0, 200));
             $this->jsonError('Respuesta inesperada del servicio de chat.', 502);
             return;
         }
@@ -111,7 +111,7 @@ class SmiDocsController extends BaseController
             return;
         }
 
-        // ── Normalizar campos de la respuesta de smirag ───────────────────────
+        // ── Normalizar campos de la respuesta de rag ───────────────────────
         $text               = $data['respuesta'] ?? $data['answer'] ?? $data['text'] ?? $data['message'] ?? '';
         $sources            = $data['fuentes']   ?? $data['sources'] ?? [];
         $found              = isset($data['found'])              ? (bool)$data['found']              : true;
@@ -120,7 +120,7 @@ class SmiDocsController extends BaseController
         $allSources         = isset($data['all_sources'])        ? (bool)$data['all_sources']        : false;
 
         $modelName    = isset($data['model'])    ? (string)$data['model']    : null;
-        $providerName = isset($data['provider']) ? (string)$data['provider'] : 'smirag';
+        $providerName = isset($data['provider']) ? (string)$data['provider'] : 'rag';
         $tokensUsed   = isset($data['tokens_used']) ? (int)$data['tokens_used'] : null;
         $extra        = (isset($data['debug_info']) || !empty($sources))
             ? json_encode(['sources' => $sources, 'debug_info' => $data['debug_info'] ?? null], JSON_UNESCAPED_UNICODE)

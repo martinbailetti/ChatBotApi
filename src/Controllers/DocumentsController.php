@@ -5,7 +5,7 @@ class DocumentsController extends BaseController
 {
     private function baseUrl(): string
     {
-        return rtrim(Config::get('SMIDOCS_BASE_URL', 'http://localhost:8888'), '/');
+        return rtrim(Config::get('DOCS_BASE_URL', 'http://localhost:8888'), '/');
     }
 
     private function proxyGet(string $path, array $query = []): array
@@ -136,5 +136,84 @@ class DocumentsController extends BaseController
             error_log('[DocumentsController::destroy] ' . $e->getMessage());
             $this->jsonError('No se pudo conectar con el servicio de documentos.', 503);
         }
+    }
+
+    // GET /api/documents/file?ruta=...
+    public function download(array $params): void
+    {
+        $this->requireAuth();
+        $ruta = trim($_GET['ruta'] ?? '');
+        if ($ruta === '') {
+            $this->jsonError('El parámetro ruta es obligatorio.', 422);
+            return;
+        }
+
+        $url = $this->baseUrl() . '/documentos/archivo?' . http_build_query(['ruta' => $ruta]);
+
+        $responseHeaders = [];
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 60,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HEADERFUNCTION => function ($ch, $header) use (&$responseHeaders) {
+                $responseHeaders[] = $header;
+                return strlen($header);
+            },
+        ]);
+        $body     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($body === false || $curlError !== '') {
+            $this->jsonError('No se pudo conectar con el servicio de documentos.', 503);
+            return;
+        }
+
+        if ($httpCode === 404) {
+            $this->jsonError('Archivo no encontrado.', 404);
+            return;
+        }
+        if ($httpCode === 403) {
+            $this->jsonError('Acceso denegado.', 403);
+            return;
+        }
+        if ($httpCode >= 400) {
+            $this->jsonError('Error al obtener el archivo.', 502);
+            return;
+        }
+
+        // Extraer Content-Type y Content-Disposition de las cabeceras del upstream
+        $contentType        = 'application/octet-stream';
+        $contentDisposition = '';
+        foreach ($responseHeaders as $headerLine) {
+            $lower = strtolower(trim($headerLine));
+            if (strncmp($lower, 'content-type:', 13) === 0) {
+                $contentType = trim(substr($headerLine, 13));
+            } elseif (strncmp($lower, 'content-disposition:', 20) === 0) {
+                $contentDisposition = trim(substr($headerLine, 20));
+            }
+        }
+
+        // Vaciar cualquier buffer de salida previo para enviar el binario limpio
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        header_remove('Content-Type');
+        header('Content-Type: ' . $contentType);
+        if ($contentDisposition !== '') {
+            header('Content-Disposition: ' . $contentDisposition);
+        } else {
+            $filename = basename(str_replace('\\', '/', $ruta));
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+        }
+        header('Content-Length: ' . strlen($body));
+        header('Cache-Control: private, no-store');
+        header('Content-Encoding: identity');
+
+        http_response_code(200);
+        echo $body;
     }
 }
