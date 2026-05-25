@@ -58,29 +58,39 @@ class MessageModel
         ?int    $userId,
         string  $role,
         string  $content,
-        ?bool   $found       = null,
-        ?string $model       = null,
-        ?string $provider    = null,
-        ?string $toolName    = null,
-        ?int    $tokensUsed  = null,
-        ?string $extra       = null
+        ?bool   $found                = null,
+        ?string $model                = null,
+        ?string $provider             = null,
+        ?string $toolName             = null,
+        ?int    $promptTokenCount     = null,
+        ?int    $candidatesTokenCount = null,
+        ?int    $totalTokenCount      = null,
+        ?string $extra                = null,
+        string  $status               = 'DEFAULT',
+        ?string $statusInfo           = null
     ): array {
         $stmt = $this->db->prepare(
             "INSERT INTO messages
-             (conversation_id, user_id, role, content, found, model, provider, tool_name, tokens_used, extra, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+             (conversation_id, user_id, role, content, found, model, provider, tool_name,
+              prompt_token_count, candidates_token_count, total_token_count,
+              extra, status, status_info, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
         );
         $stmt->execute([
             $conversationId,
             $userId,
             $role,
             $content,
-            $found === null ? null : (int)$found,
+            (int)($found ?? true),
             $model,
             $provider,
             $toolName,
-            $tokensUsed,
+            $promptTokenCount,
+            $candidatesTokenCount,
+            $totalTokenCount,
             $extra,
+            $status,
+            $statusInfo,
         ]);
         $id    = (int)$this->db->lastInsertId();
         $stmt2 = $this->db->prepare("SELECT * FROM messages WHERE id = ?");

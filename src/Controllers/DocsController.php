@@ -119,15 +119,18 @@ class DocsController extends BaseController
         $needsClarification = isset($data['needs_clarification']) ? (bool)$data['needs_clarification'] : false;
         $allSources         = isset($data['all_sources'])        ? (bool)$data['all_sources']        : false;
 
-        $modelName    = isset($data['model'])    ? (string)$data['model']    : null;
-        $providerName = isset($data['provider']) ? (string)$data['provider'] : 'rag';
-        $tokensUsed   = isset($data['tokens_used']) ? (int)$data['tokens_used'] : null;
-        $extra        = (isset($data['debug_info']) || !empty($sources))
+        $modelName            = isset($data['model'])    ? (string)$data['model']    : null;
+        $providerName         = isset($data['provider']) ? (string)$data['provider'] : 'rag';
+        $usage                = isset($data['usage']) && is_array($data['usage']) ? $data['usage'] : [];
+        $promptTokenCount     = isset($usage['prompt_token_count'])     ? (int)$usage['prompt_token_count']     : null;
+        $candidatesTokenCount = isset($usage['candidates_token_count']) ? (int)$usage['candidates_token_count'] : null;
+        $totalTokenCount      = isset($usage['total_token_count'])      ? (int)$usage['total_token_count']      : null;
+        $extra                = (isset($data['debug_info']) || !empty($sources))
             ? json_encode(['sources' => $sources, 'debug_info' => $data['debug_info'] ?? null], JSON_UNESCAPED_UNICODE)
             : null;
 
         // Guardar respuesta del asistente
-        $msgModel->save($conversationId, null, 'assistant', $text, $found, $modelName, $providerName, null, $tokensUsed, $extra);
+        $msgModel->save($conversationId, null, 'assistant', $text, $found, $modelName, $providerName, null, $promptTokenCount, $candidatesTokenCount, $totalTokenCount, $extra);
         $convModel->touch($conversationId);
 
         $this->jsonSuccess([
