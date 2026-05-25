@@ -53,6 +53,9 @@ $router->put('/api/auth/password', ['AuthController', 'changePassword']);
 // Chat / rag proxy (protegido)
 $router->post('/api/chat/query', ['DocsController', 'query']);
 
+// Mensajes — admin only
+$router->get('/api/chat/messages', ['ConversationController', 'allMessages']);
+
 // Conversaciones (protegidas)
 $router->get('/api/chat/conversations',                       ['ConversationController', 'index']);
 $router->post('/api/chat/conversations',                      ['ConversationController', 'store']);

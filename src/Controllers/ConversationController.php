@@ -88,6 +88,31 @@ class ConversationController extends BaseController
         $this->jsonSuccess($updated);
     }
 
+    // GET /api/chat/messages  (admin-only)
+    public function allMessages(array $params): void
+    {
+        $payload = $this->requireAuth();
+        $isAdmin = ($payload['type'] ?? '') === 'ADMIN';
+        if (!$isAdmin) {
+            $this->jsonError('Acceso denegado.', 403);
+            return;
+        }
+
+        $filters = [];
+        if (!empty($_GET['conversation_id'])) {
+            $filters['conversation_id'] = (int)$_GET['conversation_id'];
+        }
+        if (!empty($_GET['user_id'])) {
+            $filters['user_id'] = (int)$_GET['user_id'];
+        }
+        if (!empty($_GET['role'])) {
+            $filters['role'] = $_GET['role'];
+        }
+
+        $messages = $this->messageModel->getAll($filters);
+        $this->jsonSuccess($messages);
+    }
+
     // DELETE /api/chat/conversations/{id}
     public function destroy(array $params): void
     {

@@ -33,6 +33,10 @@ class MessageModel
             $where[]  = 'm.role = ?';
             $params[] = $filters['role'];
         }
+        if (!empty($filters['user_id'])) {
+            $where[]  = 'm.user_id = ?';
+            $params[] = (int)$filters['user_id'];
+        }
 
         $sql = "SELECT m.*, c.title AS conversation_title, u.email AS user_email
                 FROM messages m
