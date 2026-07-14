@@ -38,5 +38,3 @@ ENGINE=InnoDB
 ;
 
 
--- Si las tablas ya existen sin la columna found, ejecutar:
--- ALTER TABLE `messages` ADD COLUMN `found` TINYINT(1) NULL DEFAULT NULL AFTER `content`;

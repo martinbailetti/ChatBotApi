@@ -2,25 +2,24 @@
 -- Migración 003 — Tabla users
 -- Compatible con MariaDB 10.5
 -- ============================================================
-
-CREATE TABLE IF NOT EXISTS `users` (
-    `Id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    `email`       VARCHAR(255)  NOT NULL,
-    `first_name`  VARCHAR(100)  NOT NULL,
-    `last_name`   VARCHAR(100)  NOT NULL,
-    `password`    VARCHAR(255)  NOT NULL,
-    `created_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                  ON UPDATE CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (`Id`),
-    UNIQUE KEY `uk_users_email` (`email`),
-    INDEX `idx_users_last_name` (`last_name`),
-    INDEX `idx_users_created_at` (`created_at`)
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
-
+CREATE TABLE `users` (
+	`Id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`email` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`first_name` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`last_name` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`type` VARCHAR(100) NOT NULL DEFAULT 'USER' COLLATE 'utf8mb4_unicode_ci',
+	`password` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`created_at` DATETIME NOT NULL DEFAULT current_timestamp(),
+	`updated_at` DATETIME NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+	PRIMARY KEY (`Id`) USING BTREE,
+	UNIQUE INDEX `uk_users_email` (`email`) USING BTREE,
+	INDEX `idx_users_last_name` (`last_name`) USING BTREE,
+	INDEX `idx_users_created_at` (`created_at`) USING BTREE
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=1
+;
 -- ============================================================
 -- Nota de seguridad:
 --   El campo `password` almacena hashes generados con
