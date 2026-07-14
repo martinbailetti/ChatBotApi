@@ -42,6 +42,9 @@ $router->post('/api/auth/logout', ['AuthController', 'logout']);
 // Health check (público)
 $router->get('/api/health', ['HealthController', 'index']);
 
+// Configuracion del servidor (protegida, solo admin)
+$router->get('/api/config/server', ['ServerConfigController', 'index']);
+
 // Usuarios (protegidos)
 $router->get('/api/users',  ['UserController', 'index']);
 $router->post('/api/users', ['UserController', 'create']);
@@ -71,6 +74,7 @@ $router->delete('/api/documents',     ['DocumentsController', 'destroy']);
 
 // Ingesta — proxy a ChatIA (protegidas)
 $router->get('/api/ingestion/status', ['IngestionController', 'status']);
+$router->get('/api/ingestion/env',    ['IngestionController', 'env']);
 $router->post('/api/ingestion/sync',  ['IngestionController', 'sync']);
 
 // FAQs (archivo Markdown; escritura solo ADMIN)

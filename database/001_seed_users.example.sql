@@ -7,5 +7,5 @@
 -- En producción usa el endpoint POST /api/auth/login o el script de seeding.
 
 -- Ejemplo de inserción manual (el hash debe generarse desde PHP):
--- INSERT INTO `users` (`email`, `first_name`, `last_name`, `password`) VALUES
--- ('admin@example.com', 'Admin', 'Demo', '$2y$10$...');
+-- INSERT INTO `users` (`email`, `first_name`, `last_name`, `type`, `password`) VALUES
+-- ('admin@example.com', 'Admin', 'Demo', 'ADMIN', '$2y$10$');

@@ -19,6 +19,9 @@ class Config
     /** @var array<string, string> */
     private static $vars = [];
 
+    /** @var string|null */
+    private static $loadedFile = null;
+
     public static function load(): void
     {
         if (self::$loaded) {
@@ -33,6 +36,7 @@ class Config
         $file = file_exists($envHost) ? $envHost : (file_exists($envFallbk) ? $envFallbk : null);
 
         if ($file !== null) {
+            self::$loadedFile = $file;
             self::parseFile($file);
         }
 
@@ -57,6 +61,45 @@ class Config
         }
 
         return isset(self::$vars[$key]) ? self::$vars[$key] : $default;
+    }
+
+    /**
+     * Devuelve todas las variables cargadas desde .env, aplicando overrides
+     * de entorno del proceso para las mismas claves.
+     *
+     * @param array<int, string> $excludeKeys
+     * @return array<string, string>
+     */
+    public static function all(array $excludeKeys = []): array
+    {
+        if (!self::$loaded) {
+            self::load();
+        }
+
+        $excluded = [];
+        foreach ($excludeKeys as $key) {
+            $excluded[strtoupper((string)$key)] = true;
+        }
+
+        $out = [];
+        foreach (self::$vars as $key => $value) {
+            if (isset($excluded[strtoupper($key)])) {
+                continue;
+            }
+            $out[$key] = self::get($key, (string)$value);
+        }
+
+        ksort($out);
+        return $out;
+    }
+
+    public static function loadedFileName(): ?string
+    {
+        if (!self::$loaded) {
+            self::load();
+        }
+
+        return self::$loadedFile !== null ? basename(self::$loadedFile) : null;
     }
 
     // ──────────────────────────────────────────────────────────────────────────

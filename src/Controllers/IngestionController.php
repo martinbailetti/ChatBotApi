@@ -8,6 +8,53 @@ class IngestionController extends BaseController
         return rtrim(Config::get('DOCS_BASE_URL', 'http://localhost:8888'), '/');
     }
 
+    // GET /api/ingestion/env (solo admin)
+    public function env(array $params): void
+    {
+        $payload = $this->requireAuth();
+        if (($payload['type'] ?? '') !== 'ADMIN') {
+            $this->jsonError('Acceso denegado.', 403);
+            return;
+        }
+
+        $url = $this->baseUrl() . '/config/env';
+        $ch  = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+        ]);
+
+        $result   = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($result === false || $error !== '') {
+            error_log('[IngestionController::env] cURL error: ' . $error);
+            $this->jsonError('No se pudo conectar con el servicio de configuración.', 503);
+            return;
+        }
+
+        $data = json_decode((string)$result, true);
+        if (!is_array($data)) {
+            error_log('[IngestionController::env] Respuesta no JSON (HTTP ' . $httpCode . '): ' . substr((string)$result, 0, 200));
+            $this->jsonError('Respuesta inesperada del servicio de configuración.', 502);
+            return;
+        }
+
+        if ($httpCode >= 400) {
+            $detail = isset($data['detail'])
+                ? (is_string($data['detail']) ? $data['detail'] : json_encode($data['detail'], JSON_UNESCAPED_UNICODE))
+                : 'Error consultando configuración del RAG.';
+            $this->jsonError($detail, 502);
+            return;
+        }
+
+        $this->jsonSuccess($data);
+    }
+
     // GET /api/ingestion/status
     public function status(array $params): void
     {
