@@ -18,7 +18,7 @@ Config::load();
 require_once BASE_PATH . '/config/Database.php';
 
 // ── Datos del usuario de prueba ────────────────────────────────────────────────
-$email     = 'martinbailetti@gmail.com';
+$email     = 'mbailetti@smi2000.net';
 $firstName = 'Martín';
 $lastName  = 'Bailetti';
 $password  = 'clavesecreta';
