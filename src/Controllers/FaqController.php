@@ -2,9 +2,9 @@
 declare(strict_types=1);
 
 /**
- * FaqController — gestiona las FAQs almacenadas en un archivo Markdown.
+ * FaqController — gestiona FAQs a traves del endpoint /faqs del servidor RAG.
  *
- * Formato del archivo (DOCS_FAQS_FILE):
+ * Formato del archivo markdown remoto:
  *   # Título
  *
  *   Descripción opcional
@@ -21,10 +21,90 @@ declare(strict_types=1);
  */
 class FaqController extends BaseController
 {
-    private function filePath()
+    private function baseUrl(): string
     {
-        $path = Config::get('DOCS_FAQS_FILE', '');
-        return $path !== '' ? $path : null;
+        return rtrim(Config::get('DOCS_BASE_URL', 'http://localhost:8888'), '/');
+    }
+
+    private function proxyGetFaqsText(): array
+    {
+        $url = $this->baseUrl() . '/faqs';
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+        ]);
+
+        $result   = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($result === false || $error !== '') {
+            throw new RuntimeException('cURL error: ' . $error);
+        }
+
+        $data = json_decode((string)$result, true);
+        return [
+            'code' => $httpCode,
+            'data' => is_array($data) ? $data : null,
+            'raw'  => (string)$result,
+        ];
+    }
+
+    private function proxyPutFaqsText(string $texto): array
+    {
+        $url = $this->baseUrl() . '/faqs';
+        $payload = json_encode(['texto' => $texto], JSON_UNESCAPED_UNICODE);
+        if ($payload === false) {
+            throw new RuntimeException('No se pudo serializar el payload de FAQs.');
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST  => 'PUT',
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
+        ]);
+
+        $result   = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($result === false || $error !== '') {
+            throw new RuntimeException('cURL error: ' . $error);
+        }
+
+        $data = json_decode((string)$result, true);
+        return [
+            'code' => $httpCode,
+            'data' => is_array($data) ? $data : null,
+            'raw'  => (string)$result,
+        ];
+    }
+
+    private function ragErrorDetail(array $proxyResult, string $fallback): string
+    {
+        $data = $proxyResult['data'] ?? null;
+        if (is_array($data) && isset($data['detail'])) {
+            $detail = $data['detail'];
+            if (is_string($detail) && trim($detail) !== '') {
+                return trim($detail);
+            }
+            if (is_array($detail)) {
+                $json = json_encode($detail, JSON_UNESCAPED_UNICODE);
+                if (is_string($json) && $json !== '') {
+                    return $json;
+                }
+            }
+        }
+        return $fallback;
     }
 
     private function parseFaqs($content)
@@ -78,21 +158,34 @@ class FaqController extends BaseController
     public function index(array $params)
     {
         $this->requireAuth();
-        $filePath = $this->filePath();
-        if (!$filePath) { $this->jsonError('DOCS_FAQS_FILE no está configurado.', 500); return; }
+        try {
+            $res = $this->proxyGetFaqsText();
+            if ($res['code'] === 404) {
+                $this->jsonSuccess(array('title' => '', 'description' => '', 'faqs' => array()));
+                return;
+            }
+            if ($res['code'] >= 400) {
+                $this->jsonError($this->ragErrorDetail($res, 'Error al obtener FAQs desde el RAG.'), 502);
+                return;
+            }
 
-        if (!file_exists($filePath)) {
-            $this->jsonSuccess(array('title' => '', 'description' => '', 'faqs' => array()));
-            return;
+            if (!is_array($res['data'])) {
+                error_log('[FaqController::index] Respuesta no JSON de /faqs: ' . substr((string)($res['raw'] ?? ''), 0, 200));
+                $this->jsonError('Respuesta inesperada del servicio de FAQs.', 502);
+                return;
+            }
+
+            $content = (string)($res['data']['texto'] ?? '');
+            $header  = $this->extractHeader($content);
+            $this->jsonSuccess(array(
+                'title'       => $header['title'],
+                'description' => $header['description'],
+                'faqs'        => $this->parseFaqs($content),
+            ));
+        } catch (\Exception $e) {
+            error_log('[FaqController::index] ' . $e->getMessage());
+            $this->jsonError('No se pudo conectar con el servicio de FAQs.', 503);
         }
-
-        $content = (string)file_get_contents($filePath);
-        $header  = $this->extractHeader($content);
-        $this->jsonSuccess(array(
-            'title'       => $header['title'],
-            'description' => $header['description'],
-            'faqs'        => $this->parseFaqs($content),
-        ));
     }
 
     // POST /api/faqs  (solo ADMIN)
@@ -101,26 +194,34 @@ class FaqController extends BaseController
         $payload = $this->requireAuth();
         if (($payload['type'] ?? '') !== 'ADMIN') { $this->jsonError('Acceso denegado.', 403); return; }
 
-        $filePath = $this->filePath();
-        if (!$filePath) { $this->jsonError('DOCS_FAQS_FILE no está configurado.', 500); return; }
-
         $body        = $this->getJsonBody();
         $title       = trim((string)($body['title'] ?? ''));
         $description = trim((string)($body['description'] ?? ''));
         $faqs        = isset($body['faqs']) && is_array($body['faqs']) ? $body['faqs'] : array();
 
-        $dir = dirname($filePath);
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-
         $markdown = $this->buildMarkdown($title, $description, $faqs);
-        if (file_put_contents($filePath, $markdown) === false) {
-            $this->jsonError('No se pudo escribir el archivo de FAQs.', 500); return;
-        }
 
-        $this->jsonSuccess(array(
-            'title'       => $title,
-            'description' => $description,
-            'faqs'        => $this->parseFaqs($markdown),
-        ), 'FAQs guardadas correctamente.');
+        try {
+            $res = $this->proxyPutFaqsText($markdown);
+            if ($res['code'] >= 400) {
+                $this->jsonError($this->ragErrorDetail($res, 'No se pudo guardar el archivo de FAQs en el RAG.'), 502);
+                return;
+            }
+
+            $storedText = $markdown;
+            if (is_array($res['data']) && isset($res['data']['texto']) && is_string($res['data']['texto'])) {
+                $storedText = (string)$res['data']['texto'];
+            }
+
+            $header = $this->extractHeader($storedText);
+            $this->jsonSuccess(array(
+                'title'       => $header['title'],
+                'description' => $header['description'],
+                'faqs'        => $this->parseFaqs($storedText),
+            ), 'FAQs guardadas correctamente.');
+        } catch (\Exception $e) {
+            error_log('[FaqController::save] ' . $e->getMessage());
+            $this->jsonError('No se pudo conectar con el servicio de FAQs.', 503);
+        }
     }
 }
