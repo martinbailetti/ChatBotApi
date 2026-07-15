@@ -48,6 +48,7 @@ $router->get('/api/config/server', ['ServerConfigController', 'index']);
 // Usuarios (protegidos)
 $router->get('/api/users',  ['UserController', 'index']);
 $router->post('/api/users', ['UserController', 'create']);
+$router->put('/api/users/{id}', ['UserController', 'update']);
 
 // Perfil del usuario autenticado
 $router->put('/api/auth/profile',  ['AuthController', 'updateProfile']);
@@ -68,6 +69,7 @@ $router->delete('/api/chat/conversations/{id}',               ['ConversationCont
 
 // Documentos — proxy a ChatIA (protegidas)
 $router->get('/api/documents',        ['DocumentsController', 'index']);
+$router->get('/api/documents/tree',   ['DocumentsController', 'tree']);
 $router->get('/api/documents/detail', ['DocumentsController', 'detail']);
 $router->get('/api/documents/file',   ['DocumentsController', 'download']);
 $router->delete('/api/documents',     ['DocumentsController', 'destroy']);
@@ -75,6 +77,7 @@ $router->delete('/api/documents',     ['DocumentsController', 'destroy']);
 // Ingesta — proxy a ChatIA (protegidas)
 $router->get('/api/ingestion/status', ['IngestionController', 'status']);
 $router->get('/api/ingestion/env',    ['IngestionController', 'env']);
+$router->get('/api/ingestion/pending',['IngestionController', 'pending']);
 $router->post('/api/ingestion/sync',  ['IngestionController', 'sync']);
 
 // FAQs (archivo Markdown; escritura solo ADMIN)

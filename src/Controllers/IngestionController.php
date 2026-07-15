@@ -78,6 +78,53 @@ class IngestionController extends BaseController
         ]);
     }
 
+    // GET /api/ingestion/pending (solo admin)
+    public function pending(array $params): void
+    {
+        $payload = $this->requireAuth();
+        if (($payload['type'] ?? '') !== 'ADMIN') {
+            $this->jsonError('Acceso denegado.', 403);
+            return;
+        }
+
+        $url = $this->baseUrl() . '/ingesta/pendientes';
+        $ch  = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 60,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+        ]);
+
+        $result   = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($result === false || $error !== '') {
+            error_log('[IngestionController::pending] cURL error: ' . $error);
+            $this->jsonError('No se pudo conectar con el servicio de ingesta.', 503);
+            return;
+        }
+
+        $data = json_decode((string)$result, true);
+        if (!is_array($data)) {
+            error_log('[IngestionController::pending] Respuesta no JSON (HTTP ' . $httpCode . '): ' . substr((string)$result, 0, 200));
+            $this->jsonError('Respuesta inesperada del servicio de ingesta.', 502);
+            return;
+        }
+
+        if ($httpCode >= 400) {
+            $detail = isset($data['detail'])
+                ? (is_string($data['detail']) ? $data['detail'] : json_encode($data['detail'], JSON_UNESCAPED_UNICODE))
+                : 'Error consultando documentos pendientes de ingesta.';
+            $this->jsonError($detail, 502);
+            return;
+        }
+
+        $this->jsonSuccess($data);
+    }
+
     // POST /api/ingestion/sync (solo admin)
     public function sync(array $params): void
     {

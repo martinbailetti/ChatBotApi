@@ -112,6 +112,35 @@ class DocumentsController extends BaseController
         }
     }
 
+    // GET /api/documents/tree?base=...
+    public function tree(array $params): void
+    {
+        $this->requireAuth();
+
+        $base = isset($_GET['base']) ? trim((string)$_GET['base']) : '';
+
+        try {
+            $res = $this->proxyGet('/estructura/docs', ['base' => $base]);
+            if ($res['code'] === 404) {
+                $this->jsonError('Carpeta no encontrada.', 404);
+                return;
+            }
+            if ($res['code'] === 403) {
+                $this->jsonError('Acceso denegado a la carpeta solicitada.', 403);
+                return;
+            }
+            if ($res['code'] >= 400) {
+                $this->jsonError($res['data']['detail'] ?? 'Error al obtener el árbol de carpetas.', 502);
+                return;
+            }
+
+            $this->jsonSuccess($res['data']);
+        } catch (\Exception $e) {
+            error_log('[DocumentsController::tree] ' . $e->getMessage());
+            $this->jsonError('No se pudo conectar con el servicio de documentos.', 503);
+        }
+    }
+
     // DELETE /api/documents?ruta=... (solo admin)
     public function destroy(array $params): void
     {
